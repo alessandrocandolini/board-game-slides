@@ -1,6 +1,8 @@
+[![CI](https://github.com/alessandrocandolini/board-game-slides/actions/workflows/ci.yml/badge.svg)](https://github.com/alessandrocandolini/board-game-slides/actions/workflows/ci.yml)
+
 # board-game-slides
 
-Fill description
+Companion slides of https://github.com/alessandrocandolini/haskell-player-board
 
 ## Run
 
