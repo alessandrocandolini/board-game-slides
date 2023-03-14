@@ -107,18 +107,10 @@
   One strategy is described in words as follows:
   \begin{description}
       \item[] move right until the edge
-      \item[then] move one step down
-      \item[then] move left until the edge
-      \item[then] move one step down
-      \item[then] repeat
-  \end{description}
-\end{frame}
-\begin{frame}[fragile]
-  \begin{description}
-      \item[] fill row right
-      \item[and then] one step down
-      \item[and then] fill row left
-      \item[and then] one step down
+      \item[and then] move one step down
+      \item[and then] move left until the edge
+      \item[and then] move one step down
+      \item[and then] repeat
   \end{description}
 \end{frame}
 \begin{frame}[fragile]
@@ -126,9 +118,9 @@
     \item[repeat]
     \item[]
       \begin{description}
-      \item[] fill row right
+      \item[] fill right
       \item[and then] one step down
-      \item[and then] fill row left
+      \item[and then] fill left
       \item[and then] one step down
   \end{description}
   \end{description}
@@ -265,8 +257,7 @@ horizontal = repeat $ fill right
 
 \begin{frame}[fragile]
 \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
-vertical = repeat $
-   fill down
+vertical = repeat $ fill down
    `andThen` oneStep right
    `andThen` fill up
    `andThen` oneStep right
@@ -277,19 +268,20 @@ vertical = repeat $
 
 \begin{frame}[fragile]
 \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
-import Prelude hiding (Right, Left)
-
-data Direction = Left | Right | Up | Down
-         deriving (Eq, Show, Enum, Bounded)
-
 data Position = P Int Int deriving (Eq,Show)
 \end{lstlisting}
 \end{frame}
 \begin{frame}[fragile]
 \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+import Prelude hiding (Right, Left)
+
+data Direction = Left | Right | Up | Down
+         deriving (Eq, Show, Enum, Bounded)
+
 \end{lstlisting}
 \end{frame}
 \begin{frame}[fragile]
+  \frametitle{Algebra of moves}
   \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
 data Move
 
@@ -304,14 +296,18 @@ left = step Left
 right = step Right
 up = step Up
 down = step Down
-
-runMove left (P 1 1) `shouldBe` (P 0 1)
-runMove right (P 1 1) `shouldBe` (P 2 1)
-runMove up (P 1 1) `shouldBe` (P 1 2)
-runMove up (P 1 1) `shouldBe` (P 1 0)
 \end{lstlisting}
 \end{frame}
 \begin{frame}[fragile]
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+runMove right (P 1 1) `shouldBe` (P 2 1)
+runMove left (P 1 1) `shouldBe` (P 0 1)
+runMove up (P 1 1) `shouldBe` (P 1 2)
+runMove down (P 1 1) `shouldBe` (P 1 0)
+\end{lstlisting}
+\end{frame}
+\begin{frame}[fragile]
+  \frametitle{Internal representation: option A}
 \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
 data Move = Move {
    runMove :: Position -> Position }
@@ -319,33 +315,66 @@ data Move = Move {
 \end{lstlisting}
 \end{frame}
 \begin{frame}[fragile]
+  \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+step :: Direction -> Move
+step Right = Move $ \p -> case p of
+   P x y -> P (x+1) y
+...
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Internal representation: option B}
 \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
 data Move = Step Direction
     derives (Eq, Show)
 \end{lstlisting}
 \end{frame}
 \begin{frame}[fragile]
-\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
-upRight = up <> right 
-twoUpOneRight = up <> up <> right 
+  \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+step :: Direction -> Move
+step = Step
 \end{lstlisting}
 \end{frame}
 \begin{frame}[fragile]
 \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
-data Move = DontMove
-    | Step Direction
-    | Compose Move Move derives (Eq, Show)
-  \end{lstlisting}
+runMove :: Move -> Position -> Position
+runMove (Step Right) (P x y) = P (x + 1, y)
+...
+\end{lstlisting}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Extend the algebra}
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+upRight = up <> right
+twoUpOneRight = up <> up <> right
+\end{lstlisting}
 \end{frame}
 \begin{frame}[fragile]
 \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
 instance Semigroup Move where
-  m1 <> m2 = Compose m1 m2
+  m1 <> m2 = ...
 
 instance Monoid Move where
-  mempty = DontMove
+  mempty = ...
 \end{lstlisting}
 \end{frame}
+\begin{frame}[fragile]
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+newtype Move = Move  {
+   runMove :: Position -> Position }
+
+instance Semigroup Move where
+  (Move m1) <> (Move m2) = Move ( m1 . m2 )
+
+instance Monoid Move where
+  mempty = Move id
+
+\end{lstlisting}
+\end{frame}
+
 \begin{frame}[fragile]
 \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
 {-# LANGUAGE DerivingVia #-}
@@ -359,15 +388,30 @@ runMove = appEndo . endo
 
 \end{lstlisting}
 \end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Internal representation: option B}
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+data Move = DontMove
+    | Step Direction
+    | Compose Move Move derives (Eq, Show)
+
+instance Semigroup Move where
+  m1 <> m2 = Compose m1 m2
+
+instance Monoid Move where
+  mempty = DontMove
+\end{lstlisting}
+\end{frame}
 \begin{frame}[fragile]
 \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
-simplify :: Move -> Move 
-simplify DontMove = DontMove 
+simplify :: Move -> Move
+simplify DontMove = DontMove
 simplify s@(Step d) = s
-simplify (Compose m1 m2) = 
-  case (simplify m1, simplify m2) of 
-   (DontMove, m) -> m 
-   (m, DontMove) -> m 
+simplify (Compose m1 m2) =
+  case (simplify m1, simplify m2) of
+   (DontMove, m) -> m
+   (m, DontMove) -> m
    (Step Left, Step Right) -> DontMove
    (Step Right, Step Left) -> DontMove
    (p1, p2) -> Compose p1 p2
@@ -385,68 +429,227 @@ instance Group Move where
   invert (Step Left) = Step Right
   invert (Step Up) = Step Down
   invert (Step Down) = Step Up
-  invert (Combine m1 m2) = 
+  invert (Combine m1 m2) =
     Combine (invert m2) (invert m1)
 \end{lstlisting}
 \end{frame}
 
-\section{Algebra of strategies}
+\section{Board}
 
 \begin{frame}[fragile]
+  \frametitle{The board}
 \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
 
-data Board 
+data Board
 
-rectangular :: Int -> Int -> Board 
-
-square n = rectangular n n 
+square :: Int -> Board
+infinite :: Board
+walls :: [Position] -> Board
+oneStep right `andThen` oneStep down
+check :: Board -> Position -> Availability
 
 data Availability = Available | Unavailable
    deriving (Eq,Show)
-
-check :: Board -> Position -> Availability 
-
 \end{lstlisting}
 \end{frame}
 
 \begin{frame}[fragile]
 \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
-data Board = Board { 
-   check :: Position -> Availability } 
+data Board = Board {
+   check :: Position -> Availability }
+
+
+square n = Board $ \p -> ...
 \end{lstlisting}
 \end{frame}
 \begin{frame}[fragile]
 \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
-data Board = SquareBoard Int
-   deriving (Eq,Show) 
+data Board = Infinite | SquareBoard Int
+   deriving (Eq,Show)
 
-check (SquareBoard n) (P x y) = undefined
+square = SquareBoard
+
+check (SquareBoard n) (P x y) = ...
 
 draw :: Board -> Text
 \end{lstlisting}
 \end{frame}
+\section{Algebra of strategies}
 \begin{frame}[fragile]
+  \frametitle{Algebra of strategies}
 \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
-data Strategy 
+data Strategy
 
-oneStep :: Move -> Strategty 
-andThen :: Strategy -> Strategy -> Strategy 
+oneStep :: Move -> Strategty
 
 run :: Strategy -> Board -> Position -> [Position]
 \end{lstlisting}
 \end{frame}
 \begin{frame}[fragile]
 \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
-s = oneStep right `andThen` oneStep down
+run (oneStep right)
+    (squareBoard 10)
+    (P 0 0) `shouldBe` [(P 1 0)]
 \end{lstlisting}
 \end{frame}
 \begin{frame}[fragile]
-  \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
-  \end{lstlisting}
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+run (oneStep left)
+    (squareBoard 10)
+    (P 0 0) `shouldBe` []
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+  We might model the failures more explicitly later, in the interest of 
+  \begin{itemize}
+    \item Players who fail at a earlier step 
+    \item Model more precisely strategies that can recover from failures (eg, fill) vs strategies that cannot (eg, single move) 
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+data Strategy = OneStep Move deriving (Eq,Show)
+
+oneStep = OneStep
+
+run (OneStep m) b p = ...
+\end{lstlisting}
 \end{frame}
 \begin{frame}[fragile]
-  \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
-  \end{lstlisting}
+  \frametitle{An helper method}
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+
+runMove :: Move -> Position -> Position -- runner 
+
+-- board-aware modified runner 
+move :: Board -> Move -> Position -> Maybe Position
+move b m =
+      mfilter isAvailable
+      . pure 
+      . (runMove m)
+
+
+isAvailable = (Available ==)  . check b
+
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+
+Suggestive considerations for another time:
+  \begin{itemize}
+    \item the board acts by "deforming" / "curving" the interpreter \texttt{runMove} (interpreter in a modified "spacetime")
+    \item the original behaviour of \texttt{runMove} can be recovered by using the infinite board with no walls
+    \item semantically, we can argue that a runner of move makes no sense without a board 
+  \end{itemize}
+
+This possibly suggests we should look at ways to make the relationship between moves and boards closer (eg, a board \emph{is} a runner of a move)
+
+For now let's move forward with our ad-hoc \texttt{move} method
+
+\end{frame}
+
+\begin{frame}[fragile]
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+
+run (OneStep m) b = maybeToList . move b m
+\end{lstlisting}
+\end{frame}
+\begin{frame}[fragile]
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+
+s = oneStep right
+    `andThen` oneStep down
+    `andThen` oneStep left
+    `andThen` oneStep up
+
+run s (squareBoard 10) (P 0 0)
+   `shouldBe` [(P 1 0), (P 1 1), (P 0 1), (P 0 0)]
+\end{lstlisting}
+\end{frame}
+\begin{frame}[fragile]
+  Snake style:
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+
+s = oneStep right
+    `andThen` oneStep down
+    `andThen` oneStep left
+    `andThen` oneStep up
+
+run s (squareBoard 10) (P 0 0)
+   `shouldBe` [(P 0 0), (P 0 1), (P 1 1), (P 1 0)]
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+andThen :: Strategy -> Strategy -> Strategy
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+data Strategy = OneStep Move 
+  | AndThen Strategy Strategy deriving (Eq,Show)
+
+oneStep = OneStep
+andThen = AndThen
+
+run (OneStep m) b = maybeToList . move b m
+run (AndThen s1 s2) b p = run2 . run1 where 
+   run1 = run s1 b 
+   run2 [] = [] 
+   run2 t@(h:_) = run s2 b h ++ t 
+\end{lstlisting}
+\end{frame}
+\begin{frame}[fragile]
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+s = oneStep up
+    `andThen` oneStep right
+
+run s (squareBoard 10) (P 9 0)
+   `shouldBe` [(P 9 1)]
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+s = oneStep right
+    `andThen` oneStep up
+
+run s (squareBoard 10) (P 9 0)
+   `shouldBe` []
+\end{lstlisting}
+\end{frame}
+\begin{frame}[fragile]
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+s = oneStep right
+    `andThen` oneStep down
+    `andThen` oneStep left
+
+run s (squareBoard 10) (P 8 0)
+   `shouldBe` [(P 9 0)] ???
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile]
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+s = (oneStep right
+    `andThen` oneStep down)
+    `andThen` oneStep left
+
+run s (squareBoard 10) (P 8 0)
+   `shouldBe` [(P 9 0)] ???
+\end{lstlisting}
+\end{frame}
+
+
+\begin{frame}[fragile]
+\begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
+run' :: Strategy -> Board -> Position -> (Maybe Position, [Position])  
+\end{lstlisting}
 \end{frame}
 \begin{frame}[fragile]
   \begin{lstlisting}[language=haskell, basicstyle=\ttfamily]
